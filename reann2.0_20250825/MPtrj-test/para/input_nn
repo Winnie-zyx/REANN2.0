@@ -1,0 +1,49 @@
+# required parameters 
+  start_table = 5               # start_table table for the fit with force(1) or without force(0)
+                                 # start_table table for DM(2), TDM(3), polarizability(4)
+  table_coor = 0                 # table_coor   0 for cartesian coordinates and 1 for direct coordinates
+  nl =  [64, 64]         # neural network architecture  
+  nblock =  3
+  dropout_p=[0.0,0.0,0.0,0.0]
+  table_init = 0              # 1 used for load parameters from pth 
+  nkpoint=1                      # number of nkpoint NNs was employed to representation polarizability
+# NN epoch and NN optimize parameters
+  Epoch=800000                    # max iterations epoch                 
+  patience_epoch = 100            # pre initial learning rate epoch   
+  decay_factor = 0.5             # Factor by which the learning rate will be reduced. new_lr = lr * factor.
+  start_lr = 0.0001               # initial learning rate
+  end_lr =1e-7                  # final learning rate
+  re_ceff = 0                # factor for regularization
+# wave epoch and wave optimize parameters
+  ratio = 0.947                    # ratio for training
+# =====================================================================
+  batchsize_train =  128               # batch_size
+  batchsize_test =   128
+  e_ceff=0.1
+  init_f=50                     # init_f
+  final_f=0.5                   # final_f
+#========================queue_size sequence for laod data into gpu
+  queue_size=100
+  print_epoch=1
+  layernorm=True
+  DDP_backend='nccl'      #CPU:gloo, GPU:nccl
+  activate = 'Relu_like'
+  dtype="float32"
+
+  emb_nl=[64]
+  emb_nblock=3
+  emb_layernorm=True
+
+#===========param for orbital coefficient ===============================================
+     oc_nl = [64, 64]          # neural network architecture   
+     oc_nblock = 3
+     oc_dropout_p=[0,0,0,0]
+     oc_activate = 'Relu_like'
+   #========================queue_size sequence for laod data into gpu
+     oc_layernorm=True
+     oc_loop=2
+#========================floder used to save the data========================
+  floder="/public/home/dat-share/zyx/data/MPtrj/1/"
+  #floder="/public/home/zyx/dataset/mp_trj_extxyz_by_yuan/reann/0.1/"
+  #floder="/public/home/zyx/dataset/xiewenbo/data/"
+##MP_0.1_1 the data is used to test,only 50

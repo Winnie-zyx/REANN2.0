@@ -1,0 +1,131 @@
+8c8
+< #include <pair_reann_eqz.h>
+---
+> #include <pair_reann_gtz.h>
+26d25
+< 
+30c29
+< PairREANN_EQZ::PairREANN_EQZ(LAMMPS *lmp) : Pair(lmp) 
+---
+> PairREANN_GTZ::PairREANN_GTZ(LAMMPS *lmp) : Pair(lmp) 
+34c33
+< PairREANN_EQZ::~PairREANN_EQZ() 
+---
+> PairREANN_GTZ::~PairREANN_GTZ() 
+40a40,42
+>     // delete the map from the global index to local index
+>     atom->map_delete();
+>     atom->map_style = Atom::MAP_NONE;
+43c45
+< void PairREANN_EQZ::allocate()
+---
+> void PairREANN_GTZ::allocate()
+60c62
+< void PairREANN_EQZ::init_style()
+---
+> void PairREANN_GTZ::init_style()
+73c75
+<         if (datatype=="double") module = torch::jit::load("REANN_EQZ_LAMMPS_DOUBLE.pt");
+---
+>         if (datatype=="double") module = torch::jit::load("REANN_LAMMPS_DOUBLE.pt");
+76c78
+<             module = torch::jit::load("REANN_EQZ_LAMMPS_FLOAT.pt");
+---
+>             module = torch::jit::load("REANN_LAMMPS_FLOAT.pt");
+78a81
+>         // freeze the module
+100d102
+<         // freeze the module
+107a110,116
+> 
+>     // create the map from global to local
+>     if (atom->map_style == Atom::MAP_NONE) {
+>       atom->nghost=0;
+>       atom->map_init(1);
+>       atom->map_set();
+>     }
+111c120
+< void PairREANN_EQZ::coeff(int narg, char **arg)
+---
+> void PairREANN_GTZ::coeff(int narg, char **arg)
+158c167
+<     int i=0;
+---
+>     long i_ele=0;
+160c169,170
+<       ele_map[*it]=i++;
+---
+>       i_ele+=1;
+>       ele_map[*it]=i_ele;
+163c173
+<     //read elements used in lmp from input script
+---
+>     //
+166,169c176,185
+<     string elearr[numele];
+<     for (int i=0;i<=numele;i++){
+<       //elearr[i]=arg[5+i];
+<       element_int.push_back[ele_map[arg[5+i]]];
+---
+>     std::cout<<"numele= "<<numele<<std::endl;
+>     //std::string ele_tmp;
+>     //std::vector<long> element_int;
+>     //long element_int[numele];
+>     for (int i=0;i<numele;i++){
+>       //ele_tmp=arg[5+i];
+>       //int j=ele_map[ele_tmp];
+>       //element_int.push_back(j);
+>       element_int.push_back(ele_map[arg[5+i]]);
+>       //element_int[i]=ele_map[arg[5+i]];
+175c191
+< void PairREANN_EQZ::settings(int narg, char **arg)
+---
+> void PairREANN_GTZ::settings(int narg, char **arg)
+180c196
+< double PairREANN_EQZ::init_one(int i, int j)
+---
+> double PairREANN_GTZ::init_one(int i, int j)
+201c217
+< void PairREANN_EQZ::compute(int eflag, int vflag)
+---
+> void PairREANN_GTZ::compute(int eflag, int vflag)
+207a224
+>     tagint *tag = atom->tag;
+225c242
+<     torch::Tensor neigh_species=torch::empty({numneigh_atom},torch::dtype(torch::kLong));*/
+---
+>     torch::Tensor neigh_list=torch::empty({numneigh_atom},torch::dtype(torch::kLong));*/
+228c245
+<     vector<long> neigh_species(numneigh_atom);
+---
+>     vector<long> neigh_list(numneigh_atom);
+242d258
+<     
+248a265
+>         //std::cout<<"type[i] "<<type[i]-1<<"-"<<element_int[type[i]-1]<<std::endl;
+263c280
+<                 neigh_species[totneigh]=element_int[type[j]-1];
+---
+>                 neigh_list[totneigh]=atom->map(tag[j]);
+271c288
+<     auto neigh_species_=torch::from_blob(neigh_species.data(),{totneigh},option2).to(device_tensor.device(),true);
+---
+>     auto neigh_list_=torch::from_blob(neigh_list.data(),{totneigh},option2).to(device_tensor.device(),true);
+274d290
+< 
+286,287c302
+<     auto outputs = module.forward({cart_,cell_,atom_index_,local_species_,neigh_species_}).toTuple()->elements();
+< 
+---
+>     auto outputs = module.forward({cart_,cell_,atom_index_,local_species_,neigh_list_}).toTuple()->elements();
+294,299d308
+< 
+<     //cout<<"stress ";
+<     //for (i=0; i<9; ++i){
+<     //cout<<" "<<stress[i];
+<     //}
+<     cout<<endl;
+322c331
+< int PairREANN_EQZ::select_gpu() 
+---
+> int PairREANN_GTZ::select_gpu() 

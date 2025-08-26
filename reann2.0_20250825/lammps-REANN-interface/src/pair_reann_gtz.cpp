@@ -1,0 +1,369 @@
+// Copyright 2018 Andreas Singraber (University of Vienna)
+// //
+// // This Source Code Form is subject to the terms of the Mozilla Public
+// // License, v. 2.0. If a copy of the MPL was not distributed with this
+// // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#include <mpi.h>
+#include <stdlib.h>
+#include <pair_reann_gtz.h>
+#include <string>
+#include <numeric>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include "atom.h"
+#include "comm.h"
+#include "neighbor.h"
+#include "neigh_list.h"
+#include "neigh_request.h"
+#include "memory.h"
+#include "error.h"
+#include "update.h"
+#include "utils.h"
+#include "domain.h"
+
+using namespace LAMMPS_NS;
+using namespace std;
+
+PairREANN_GTZ::PairREANN_GTZ(LAMMPS *lmp) : Pair(lmp) 
+{
+}
+
+PairREANN_GTZ::~PairREANN_GTZ() 
+{
+    if (allocated) 
+    {
+         memory->destroy(setflag);
+         memory->destroy(cutsq);
+    }
+    // delete the map from the global index to local index
+    atom->map_delete();
+    atom->map_style = Atom::MAP_NONE;
+}
+
+void PairREANN_GTZ::allocate()
+{
+    allocated = 1;
+    int n = atom->ntypes;
+    memory->create(setflag,n+1,n+1,"pair:setflag");
+    memory->create(cutsq,n+1,n+1,"pair:cutsq");
+    for (int i = 1; i <= n; i++)
+    {
+        for (int j = i; j <= n; j++)
+            setflag[i][j] = 0;
+    }
+}
+
+
+
+
+
+void PairREANN_GTZ::init_style()
+{
+    int irequest = neighbor->request(this,instance_me);
+    neighbor->requests[irequest]->pair = 1;
+    neighbor->requests[irequest]->half = 0;
+    neighbor->requests[irequest]->full = 1;
+    try 
+    {
+        //enable the optimize of torch.script
+        torch::jit::GraphOptimizerEnabledGuard guard{true};
+        torch::jit::setGraphExecutorOptimize(true);
+        // load the model 
+        // Deserialize the ScriptModule from a file using torch::jit::load().
+        if (datatype=="double") module = torch::jit::load("REANN_LAMMPS_DOUBLE.pt");
+        else 
+        {
+            module = torch::jit::load("REANN_LAMMPS_FLOAT.pt");
+            tensor_type = torch::kFloat32;
+        }
+        // freeze the module
+        int id;
+        if (torch::cuda::is_available()) 
+        {
+            // used for assign the CUDA_VISIBLE_DEVICES= id
+            MPI_Barrier(MPI_COMM_WORLD);
+            // return the GPU id for the process
+            id=select_gpu();
+            torch::DeviceType device_type=torch::kCUDA;
+            auto device=torch::Device(device_type,id);
+            cout << "The simulations are performed on the GPU" << endl;
+            option1=option1.pinned_memory(true);
+            option2=option2.pinned_memory(true);
+            module.to(device);
+            device_tensor=device_tensor.to(device);
+        }
+        /*else 
+        {
+            device_type = torch::kCPU;
+            device=torch::Device(device_type);
+        }*/
+        module.eval();
+        module=torch::jit::optimize_for_inference(module);
+    }
+    catch (const c10::Error& e) 
+    {
+        std::cerr << "error loading the model\n";
+    }
+    std::cout << "ok\n";
+
+    // create the map from global to local
+    if (atom->map_style == Atom::MAP_NONE) {
+      atom->nghost=0;
+      atom->map_init(1);
+      atom->map_set();
+    }
+  
+}
+
+void PairREANN_GTZ::coeff(int narg, char **arg)
+{
+    if (!allocated) 
+    {
+        allocate();
+    }
+
+    int n = atom->ntypes;
+    int ilo,ihi,jlo,jhi;
+    ilo = 0;
+    jlo = 0;
+    ihi = n;
+    jhi = n;
+    //utils::bounds(FLERR,arg[0],1,atom->ntypes,ilo,ihi,error);
+    //utils::bounds(FLERR,arg[1],1,atom->ntypes,jlo,jhi,error);
+    cutoff = utils::numeric(FLERR, arg[2], false,lmp);
+    datatype=arg[3];
+    cutoffsq=cutoff*cutoff;
+    for (int i = ilo; i <= ihi; i++) 
+    {
+        for (int j = MAX(jlo,i); j <= jhi; j++) 
+        {
+            setflag[i][j] = 1;
+        }
+    }
+    //if (count == 0) error->all(FLERR,"Incorrect args for pair coefficients");
+    
+    //pair_coeff * * ${cutoff} ${datatype} numele C H O N
+    //load all the elements in periodic table
+    std::vector<std::string> chemical_symbols = {
+      //"X",
+      "H", "He",
+      "Li", "Be", "B", "C", "N", "O", "F", "Ne",
+      "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar",
+      "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+      "Ga", "Ge", "As", "Se", "Br", "Kr",
+      "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+      "In", "Sn", "Sb", "Te", "I", "Xe",
+      "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy",
+      "Ho", "Er", "Tm", "Yb", "Lu",
+      "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi",
+      "Po", "At", "Rn",
+      "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk",
+      "Cf", "Es", "Fm", "Md", "No", "Lr",
+      "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc",
+      "Lv", "Ts", "Og"};
+    std::unordered_map<std::string,int>ele_map;
+    long i_ele=0;
+    for (auto it=chemical_symbols.begin();it!=chemical_symbols.end();it++){
+      i_ele+=1;
+      ele_map[*it]=i_ele;// 'H'->1;'O'->8
+    }
+
+    //read elements used in lmp from input script
+    int numele;
+    numele = utils::numeric(FLERR, arg[4], false,lmp);
+    //std::cout<<"numele= "<<numele<<std::endl;
+    //std::string ele_tmp;
+    //std::vector<long> element_int;
+    //long element_int[numele];
+    for (int i=0;i<numele;i++){
+      //ele_tmp=arg[5+i];
+      //int j=ele_map[ele_tmp];
+      //element_int.push_back(j);
+      element_int.push_back(ele_map[arg[5+i]]);
+      //element_int[i]=ele_map[arg[5+i]];
+//std::cout<<arg[5+i]<<" "<<ele_map[arg[5+i]]<<std::endl;
+    }
+    
+}
+
+
+void PairREANN_GTZ::settings(int narg, char **arg)
+{
+}
+
+
+double PairREANN_GTZ::init_one(int i, int j)
+{
+  return cutoff;
+}
+/*=========================copy from the integrate.ev_set===========================
+   set eflag,vflag for current iteration
+   invoke matchstep() on all timestep-dependent computes to clear their arrays
+   eflag/vflag based on computes that need info on this ntimestep
+   eflag = 0 = no energy computation
+   eflag = 1 = global energy only
+   eflag = 2 = per-atom energy only
+   eflag = 3 = both global and per-atom energy
+   vflag = 0 = no virial computation (pressure)
+   vflag = 1 = global virial with pair portion via sum of pairwise interactions
+   vflag = 2 = global virial with pair portion via F dot r including ghosts
+   vflag = 4 = per-atom virial only
+   vflag = 5 or 6 = both global and per-atom virial
+=========================================================================================*/
+//#pragma GCC push_options
+//#pragma GCC optimize (0)
+
+void PairREANN_GTZ::compute(int eflag, int vflag)
+{
+    if(eflag || vflag) ev_setup(eflag,vflag);
+    else evflag = vflag_fdotr = eflag_global = eflag_atom = 0;
+    double **x=atom->x;
+    double **f=atom->f;
+    int *type = atom->type; 
+    tagint *tag = atom->tag;
+    int nlocal = atom->nlocal,nghost=atom->nghost;
+    int *ilist,*jlist,*numneigh,**firstneigh;
+    int i,ii,inum,j,jj,jnum,maxneigh;
+    int totneigh=0,nall=nghost+nlocal;
+    int totdim=nall*3;
+     
+    inum = list->inum;
+    ilist = list->ilist;
+    numneigh = list->numneigh;
+    firstneigh = list->firstneigh;
+    int numneigh_atom = accumulate(numneigh, numneigh + inum , 0);
+    /*torch::Tensor cart = torch::empty({nall,3},torch::dtype(torch::kDouble));
+    // for getting the index of local species list atom for all the local atom
+    torch::Tensor local_species = torch::empty({inum},torch::dtype(torch::kLong));
+    // for getting the index of neigh list atom for all the local atom
+    torch::Tensor atom_index=torch::empty({numneigh_atom,2},torch::dtype(torch::kLong));
+    // for getting the index of neigh species list atom for all the local atom
+    torch::Tensor neigh_list=torch::empty({numneigh_atom},torch::dtype(torch::kLong));*/
+    vector<double> cart(totdim);
+    vector<long> atom_index(numneigh_atom*2);
+    vector<long> neigh_list(numneigh_atom);
+    vector<long> local_species(inum);
+    double dx,dy,dz,d2;
+    double xtmp,ytmp,ztmp;
+    unsigned countnum=0;
+    // assign the cart with x
+    for (ii=0; ii<nall; ++ii)
+    {
+        for (jj=0; jj<3; ++jj)
+        {
+            cart[countnum]=x[ii][jj];
+            ++countnum;
+        }
+    }
+    for (ii=0; ii<inum; ++ii)
+    {
+        i=ilist[ii];
+        xtmp = x[i][0];
+        ytmp = x[i][1];
+        ztmp = x[i][2];
+//std::cout<<"type[i] "<<type[i]-1<<"-"<<element_int[type[i]-1]<<std::endl;
+        local_species[i]=element_int[type[i]-1];
+//std::cout<<"local_species_ "<<i<<"->"<<local_species[i]<<std::endl;
+        jnum=numneigh[i];
+        jlist=firstneigh[i];
+        for (jj=0; jj<jnum; ++jj)
+        {
+            j=jlist[jj];
+//std::cout<<" "<<j<<";";
+            dx = xtmp - x[j][0];
+            dy = ytmp - x[j][1];
+            dz = ztmp - x[j][2];
+            d2 = dx * dx + dy * dy + dz * dz;
+            if (d2<cutoffsq)
+            {
+                atom_index[totneigh*2]=i;
+                atom_index[totneigh*2+1]=j;
+                neigh_list[totneigh]=atom->map(tag[j]);
+                ++totneigh;
+            }
+        }
+    }
+    
+    auto cart_=torch::from_blob(cart.data(),{nall,3},option1).to(device_tensor.device(),true).to(tensor_type);
+    auto atom_index_=torch::from_blob(atom_index.data(),{totneigh,2},option2).to(device_tensor.device(),true);
+    auto neigh_list_=torch::from_blob(neigh_list.data(),{totneigh},option2).to(device_tensor.device(),true);
+    auto local_species_=torch::from_blob(local_species.data(),{inum},option2).to(device_tensor.device(),true);
+//std::cout<<"\n atom_index "<<atom_index<<";";
+
+    auto xx =domain->boxhi[0]-domain->boxlo[0];
+    auto xy =domain->xy;
+    auto xz =domain->xz;
+    auto yy =domain->boxhi[1]-domain->boxlo[1];
+    auto yz =domain->yz;
+    auto zz =domain->boxhi[2]-domain->boxlo[2];
+    vector<double> cell(9);
+    cell={xx,xy,xz,0e0,yy,yz,0e0,0e0,zz};
+
+    auto cell_=torch::from_blob(cell.data(),{3,3},option1).to(device_tensor.device(),true).to(tensor_type);
+
+    auto outputs = module.forward({cart_,cell_,atom_index_,local_species_,neigh_list_}).toTuple()->elements();
+    auto tensor_etot=outputs[0].toTensor().to(torch::kDouble).cpu();
+    auto tensor_stress=outputs[1].toTensor().to(torch::kDouble).cpu();
+    auto tensor_force=outputs[2].toTensor().to(torch::kDouble).cpu();
+    auto tensor_atom_ene=outputs[3].toTensor().to(torch::kDouble).cpu();
+    auto etot = tensor_etot.data_ptr<double>();
+//std::cout<<"etot "<<*etot<<std::endl;
+    auto stress = tensor_stress.data_ptr<double>();
+    auto force = tensor_force.data_ptr<double>();
+    auto atom_ene = tensor_atom_ene.data_ptr<double>();
+    for (i=0; i<nall; ++i)
+    {
+        for (j=0; j<3; ++j)
+            f[i][j] += *force++; 
+    }
+
+    if (eflag_global)
+        ev_tally(0,0,nlocal,1,etot[0],0.0,0.0,0.0,0.0,0.0);
+
+    if (eflag_atom)
+        for ( ii = 0; ii < nlocal; ++ii)
+        {
+            i=ilist[ii];
+            eatom[ii] = atom_ene[i];
+        }
+
+    if (vflag_fdotr) virial_fdotr_compute();
+}
+//#pragma GCC pop_options
+//
+int PairREANN_GTZ::select_gpu() 
+{
+    int totalnodes, mynode;
+    int trap_key = 0;
+    MPI_Status status;
+    
+    MPI_Comm_size(MPI_COMM_WORLD, &totalnodes);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mynode);
+    if (mynode != trap_key)  //this will allow only process 0 to skip this stmt
+        MPI_Recv(&trap_key, 1, MPI_INT, mynode - 1, 0, MPI_COMM_WORLD, &status);
+    
+    //here is the critical section 
+    system("nvidia-smi -q -d Memory |grep -A4 GPU|grep Used >gpu_info");
+    ifstream gpu_sel("gpu_info");
+    string texts;
+    vector<double> memalloc;
+    while (getline(gpu_sel,texts))
+    {
+         string tmp_str;
+         stringstream allocation(texts);        
+         allocation >> tmp_str;
+         allocation >> tmp_str;
+         allocation >> tmp_str;
+         memalloc.push_back(std::stod(tmp_str));
+    }
+    gpu_sel.close();
+    auto smallest=min_element(std::begin(memalloc),std::end(memalloc));
+    auto id=distance(std::begin(memalloc), smallest);
+    torch::Tensor device_tensor=torch::empty(1000,torch::Device(torch::kCUDA,id));
+    if(mynode != totalnodes - 1)  // this will allow only the last process to skip this
+        MPI_Send(&trap_key, 1, MPI_INT, mynode + 1, 0, MPI_COMM_WORLD);
+    system("rm gpu_info");
+    return id;
+}

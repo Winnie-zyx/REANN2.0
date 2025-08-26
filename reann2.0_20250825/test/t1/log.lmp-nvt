@@ -1,0 +1,157 @@
+LAMMPS (10 Feb 2021)
+  using 8 OpenMP thread(s) per MPI task
+#===============variable=============================
+#=============thermostat=======================
+variable nvt_dt            equal   0.0002
+variable nvt_nsteps        equal   50000
+variable thermo_nsteps     equal   2000
+variable coor_nsteps       equal   1
+ variable cutoff            equal   5.0
+#variable cutoff_mod        equal   6.2
+#variable cutoff_rdf        equal   6.2
+variable neigh_skin        equal   0.5   # skin for the save the calculation of pbc
+variable T_start           equal   300.0
+variable T_end             equal   300.0
+variable T_damp            equal   100*${nvt_dt}
+variable T_damp            equal   100*0.0002
+variable seed              equal   999999999
+variable mass1             equal   15.9994
+variable mass2             equal   1.008
+variable input_structure   string  data.lmp
+variable integerate        string  verlet  # integerate algorithm in MD simulation
+variable poten_function    string  reann_gtz
+variable datatype          string  float  # optional float/double
+
+units           metal
+# this command should be used prior to setting up a simulation box via the create_box or
+# read_data commands. Restart files also store this setting.
+dimension       3          # simulation dimensions
+#newton          off        # calculate the pair interaction on each processor
+#processors      3  3  3           # processor on each dimension
+boundary        p   p   p   # p/f/s period/non-period/shrink_warp
+# This command must be used before a simulation is setup via a read_data, read_restart,
+# or create_box command.
+atom_style      atomic      # properties to store and read
+# The id and map keywords must be specified before a simulation box is defined;
+# other keywords can be specified any time.
+#atom_modify     map yes   # non-zero atom IDs can be assigned to each atom.
+read_data       ${input_structure}          # read data from the file
+read_data       data.lmp          
+Reading data file ...
+  orthogonal box = (0.0000000 0.0000000 0.0000000) to (12.618500 12.618500 12.618500)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  192 atoms
+  read_data CPU = 0.003 seconds
+mass 1 ${mass1}          # set mass for element 1
+mass 1 15.9994          
+mass 2 ${mass2}          # set mass for element 2
+mass 2 1.008          
+replicate  1  1   1
+Replicating atoms ...
+  orthogonal box = (0.0000000 0.0000000 0.0000000) to (12.618500 12.618500 12.618500)
+  1 by 1 by 1 MPI processor grid
+  192 atoms
+  replicate CPU = 0.002 seconds
+
+neighbor ${neigh_skin} bin   #skin = extra distance beyond force cutoff;style = bin or nsq or multi
+neighbor 0.5 bin   
+velocity all create ${T_start} ${seed}
+velocity all create 300 ${seed}
+velocity all create 300 999999999
+pair_style ${poten_function}
+pair_style reann_gtz
+pair_coeff * * ${cutoff} ${datatype} 2 O H
+pair_coeff * * 5 ${datatype} 2 O H
+pair_coeff * * 5 float 2 O H
+#dump 1 all atom ${coor_nsteps} dump.atom  #output the trajectories configurations
+# used for thermalstat
+   timestep ${nvt_dt}
+   timestep 0.0002
+   #run_style ${integerate}
+   fix 1 all nvt temp ${T_start} ${T_end} ${T_damp}
+   fix 1 all nvt temp 300 ${T_end} ${T_damp}
+   fix 1 all nvt temp 300 300 ${T_damp}
+   fix 1 all nvt temp 300 300 0.02
+   thermo ${thermo_nsteps}
+   thermo 2000
+   run ${nvt_nsteps}
+   run 50000
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 5.5
+  ghost atom cutoff = 5.5
+  binsize = 2.75, bins = 5 5 5
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair reann_gtz, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 9.272 | 9.272 | 9.272 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0          300   -30034.848            0   -30027.441   -2231.4934 
+    2000    526.97183   -29974.186            0   -29961.175   -10577.679 
+    4000    349.27804   -29986.914            0   -29978.291   -7922.7071 
+    6000    430.91247   -29994.721            0   -29984.082   -970.92185 
+    8000     501.6876    -29988.25            0   -29975.864    946.39979 
+   10000    323.18675   -29999.484            0   -29991.505   -5153.6677 
+   12000    414.84959   -29991.568            0   -29981.326   -4127.0293 
+   14000    385.72825   -29995.799            0   -29986.276   -3452.1613 
+   16000    358.67837   -29991.488            0   -29982.633    706.76149 
+   18000     452.5725   -29978.906            0   -29967.733   -5733.0347 
+   20000    588.29821   -29971.811            0   -29957.286   -11526.481 
+   22000    414.64564   -29989.547            0    -29979.31    8003.6642 
+   24000    440.52319   -29964.865            0   -29953.989   -9832.0159 
+   26000    323.37667    -29994.34            0   -29986.356   -10592.334 
+   28000    417.65999    -29988.67            0   -29978.358   -4857.1122 
+   30000    387.97679    -29995.43            0   -29985.851   -4294.5866 
+   32000    489.46055   -29989.477            0   -29977.392    4011.0873 
+   34000    365.96818   -29995.963            0   -29986.928   -5311.4657 
+   36000     415.5849   -29994.965            0   -29984.705   -1630.7842 
+   38000    401.93053   -29993.518            0   -29983.594   -6969.6324 
+   40000    474.65601   -29975.693            0   -29963.975    2162.3079 
+   42000    488.92654   -29973.275            0   -29961.204   -7476.8639 
+   44000     392.5379   -29987.385            0   -29977.694   -5246.8856 
+   46000    326.39044   -29993.307            0   -29985.248   -1306.3369 
+   48000    436.82449   -29990.572            0   -29979.788   -8141.0821 
+   50000    530.27111    -29982.92            0   -29969.828    1079.8568 
+Loop time of 1566.47 on 8 procs for 50000 steps with 192 atoms
+
+Performance: 0.552 ns/day, 43.513 hours/ns, 31.919 timesteps/s
+724.6% CPU use with 1 MPI tasks x 8 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 1562.8     | 1562.8     | 1562.8     |   0.0 | 99.77
+Neigh   | 2.0961     | 2.0961     | 2.0961     |   0.0 |  0.13
+Comm    | 0.57098    | 0.57098    | 0.57098    |   0.0 |  0.04
+Output  | 0.0022411  | 0.0022411  | 0.0022411  |   0.0 |  0.00
+Modify  | 0.78893    | 0.78893    | 0.78893    |   0.0 |  0.05
+Other   |            | 0.1724     |            |       |  0.01
+
+Nlocal:        192.000 ave         192 max         192 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        1164.00 ave        1164 max        1164 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:         0.00000 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:      12914.0 ave       12914 max       12914 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 12914
+Ave neighs/atom = 67.260417
+Neighbor list builds = 4217
+Dangerous builds = 1800
+
+#   reset_timestep 0
+## used for calculate the rdf
+#   fix 1 all nvt temp ${T_start} ${T_end} ${T_damp}
+#   dump 11 all custom 1 dump.nvt.lmp id element xu yu zu vx vy vz
+#   dump_modify 11 element O H
+#   dump_modify 11 format line "%3i %s %12.8f %12.8f %12.8f %12.8f %12.8f %12.8f"
+#   dump_modify 11 sort id
+#   run 500000
+Total wall time: 0:26:06

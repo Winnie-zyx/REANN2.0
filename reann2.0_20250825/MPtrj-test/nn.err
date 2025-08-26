@@ -1,0 +1,10 @@
+REANN Package used for fitting energy and tensorial Property
+2025-03-06-16_25_34 
+Epoch=    0 learning rate   1.000000e-04  train error:   59.60211    0.03343    0.79384 test error:   69.11702    0.02382    0.68999 
+Epoch=    1 learning rate   1.000000e-04  train error:   42.03446    0.03382    0.79137 test error:   58.82350    0.02667    0.68898 
+Epoch=    2 learning rate   1.000000e-04  train error:   35.92270    0.09315    0.78030 test error:   48.34709    0.03170    0.68474 
+Epoch=    3 learning rate   1.000000e-04  train error:   33.07825    0.03507    0.74968 test error:   40.38433    0.04215    0.66810 
+Epoch=    4 learning rate   1.000000e-04  train error:   31.65471    0.03804    0.70410 test error:   37.08413    0.04205    0.63402 
+Epoch=    5 learning rate   1.000000e-04  train error:   30.28336    0.03809    0.66074 test error:   36.50757    0.03488    0.59155 
+Epoch=    6 learning rate   1.000000e-04  train error:   30.50540    0.03301    0.62605 test error:   36.39558    0.03229    0.54961 
+Epoch=    7 learning rate   1.000000e-04  train error:   29.85012    0.16630    0.59365 test error:   36.16798    0.02916    0.51111 

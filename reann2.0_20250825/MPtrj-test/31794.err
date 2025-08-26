@@ -1,0 +1,2 @@
+cat: node23: No such file or directory
+slurmstepd: error: *** JOB 31794 ON node23 CANCELLED AT 2025-03-06T16:17:52 ***

@@ -1,0 +1,128 @@
+class Neigh_List(Module):
+  __parameters__ = []
+  __buffers__ = []
+  training : bool
+  _is_full_backward_hook : Optional[bool]
+  cutoff : float
+  cell_list : float
+  linked : Tensor
+  def forward(self: __torch__.inference.get_neigh.Neigh_List,
+    period_table: Tensor,
+    coordinates: Tensor,
+    cell: Tensor,
+    mass: Tensor) -> Tuple[Tensor, Tensor]:
+    numatom = (torch.size(coordinates))[0]
+    inv_cell = torch.inverse(cell)
+    inv_coor = torch.einsum("ij,jk -> ik", [coordinates, inv_cell])
+    _0 = torch.sub(inv_coor, torch.select(inv_coor, 0, 0))
+    deviation_coor = torch.round(_0)
+    inv_coor0 = torch.sub(inv_coor, deviation_coor)
+    _1 = torch.einsum("ij,jk -> ik", [inv_coor0, cell])
+    _2 = torch.slice(torch.slice(coordinates), 1)
+    _3 = torch.copy_(_2, _1)
+    totmass = torch.sum(mass)
+    _4 = torch.einsum("i,ij->j", [mass, coordinates])
+    com = torch.div(_4, totmass)
+    _5 = torch.slice(torch.unsqueeze(com, 0), 1)
+    _6 = torch.sub(coordinates, _5)
+    _7 = torch.slice(torch.slice(coordinates), 1)
+    _8 = torch.copy_(_7, _6)
+    cutoff = self.cutoff
+    _9 = torch.mul(torch.reciprocal(torch.abs(cell)), cutoff)
+    _10, _11 = torch.min(_9, 0)
+    num_repeats = torch.to(torch.ceil(_10), 3)
+    num_repeats0 = torch.mul(period_table, num_repeats)
+    _12 = torch.add(ops.prim.data(num_repeats0), 1)
+    num_repeats_up = torch.detach(_12)
+    _13 = torch.neg(ops.prim.data(num_repeats0))
+    num_repeats_down = torch.detach(_13)
+    num_repeats_up0 = torch.requires_grad_(num_repeats_up, False)
+    num_repeats_down0 = torch.requires_grad_(num_repeats_down, False)
+    _14 = torch.select(num_repeats_down0, 0, 0)
+    _15 = torch.select(num_repeats_up0, 0, 0)
+    _16 = ops.prim.device(coordinates)
+    r1 = torch.arange(annotate(number, _14), annotate(number, _15), dtype=None, layout=None, device=_16)
+    _17 = torch.select(num_repeats_down0, 0, 1)
+    _18 = torch.select(num_repeats_up0, 0, 1)
+    _19 = ops.prim.device(coordinates)
+    r2 = torch.arange(annotate(number, _17), annotate(number, _18), dtype=None, layout=None, device=_19)
+    _20 = torch.select(num_repeats_down0, 0, 2)
+    _21 = torch.select(num_repeats_up0, 0, 2)
+    _22 = ops.prim.device(coordinates)
+    r3 = torch.arange(annotate(number, _20), annotate(number, _21), dtype=None, layout=None, device=_22)
+    shifts = torch.to(torch.cartesian_prod([r1, r2, r3]), ops.prim.dtype(coordinates))
+    shifts0 = torch.einsum("ij,jk ->ik", [shifts, cell])
+    num_shifts = (torch.size(shifts0))[0]
+    all_shifts = torch.arange(num_shifts, dtype=None, layout=None, device=ops.prim.device(coordinates))
+    all_atoms = torch.arange(numatom, dtype=None, layout=None, device=ops.prim.device(coordinates))
+    _23 = torch.cartesian_prod([all_shifts, all_atoms])
+    prod = torch.contiguous(torch.t(_23))
+    _24, _25 = torch.min(coordinates, 0)
+    cutoff0 = self.cutoff
+    mincoor = torch.sub(torch.sub(_24, cutoff0), 9.9999999999999995e-07)
+    coordinates0 = torch.sub(coordinates, mincoor)
+    _26, _27 = torch.max(coordinates0, 0)
+    cutoff1 = self.cutoff
+    maxcoor = torch.add(_26, cutoff1)
+    _28 = torch.slice(torch.unsqueeze(coordinates0, 0), 1)
+    _29 = torch.slice(_28, 2)
+    _30 = torch.unsqueeze(torch.slice(shifts0), 1)
+    image = torch.view(torch.add(_29, torch.slice(_30, 2)), [-1, 3])
+    _31 = torch.mul(torch.lt(image, maxcoor), torch.gt(image, 0))
+    mask = torch.view(torch.nonzero(torch.all(_31, 1)), [-1])
+    image_mask = torch.index_select(image, 0, mask)
+    _32 = torch.slice(prod)
+    _33 = annotate(List[Optional[Tensor]], [None, mask])
+    prod0 = torch.index(_32, _33)
+    cell_list = self.cell_list
+    ori_image_index = torch.floor(torch.div(coordinates0, cell_list))
+    linked = self.linked
+    _34 = torch.expand(linked, [numatom, -1, 3])
+    cell_linked = torch.to(_34, ops.prim.device(coordinates0))
+    _35 = torch.unsqueeze(torch.slice(ori_image_index), 1)
+    neigh_cell = torch.add(torch.slice(_35, 2), cell_linked)
+    cell_list0 = self.cell_list
+    image_index = torch.floor(torch.div(image_mask, cell_list0))
+    cell_list1 = self.cell_list
+    max_cell_index = torch.ceil(torch.div(maxcoor, cell_list1))
+    _36 = torch.slice(torch.slice(neigh_cell), 1)
+    _37 = torch.mul(torch.select(_36, 2, 2), torch.select(max_cell_index, 0, 1))
+    _38 = torch.mul(_37, torch.select(max_cell_index, 0, 0))
+    _39 = torch.slice(torch.slice(neigh_cell), 1)
+    _40 = torch.mul(torch.select(_39, 2, 1), torch.select(max_cell_index, 0, 0))
+    _41 = torch.add(_38, _40)
+    _42 = torch.slice(torch.slice(neigh_cell), 1)
+    neigh_cell_index = torch.add(_41, torch.select(_42, 2, 0))
+    _43 = torch.select(torch.slice(image_index), 1, 2)
+    _44 = torch.mul(_43, torch.select(max_cell_index, 0, 1))
+    _45 = torch.mul(_44, torch.select(max_cell_index, 0, 0))
+    _46 = torch.select(torch.slice(image_index), 1, 1)
+    _47 = torch.mul(_46, torch.select(max_cell_index, 0, 0))
+    _48 = torch.add(_45, _47)
+    _49 = torch.select(torch.slice(image_index), 1, 0)
+    nimage_index = torch.add(_48, _49)
+    _50 = torch.unsqueeze(torch.slice(neigh_cell_index), 1)
+    _51 = torch.slice(_50, 2)
+    _52 = torch.slice(torch.unsqueeze(nimage_index, 0), 1)
+    _53 = torch.eq(_51, torch.unsqueeze(_52, 2))
+    mask_neigh = torch.nonzero(_53)
+    atom_index = torch.slice(torch.slice(mask_neigh), 1, 0, 2)
+    atom_index0 = torch.contiguous(torch.t(atom_index))
+    selected_coordinate1 = torch.index_select(coordinates0, 0, torch.select(atom_index0, 0, 0))
+    selected_coordinate2 = torch.index_select(image_mask, 0, torch.select(atom_index0, 0, 1))
+    _54 = torch.sub(selected_coordinate1, selected_coordinate2)
+    distances = torch.norm(_54, 2, [-1])
+    cutoff2 = self.cutoff
+    _55 = torch.mul(torch.lt(distances, cutoff2), torch.gt(distances, 0.001))
+    pair_index = torch.reshape(torch.nonzero(_55), [-1])
+    _56 = torch.slice(atom_index0)
+    _57 = annotate(List[Optional[Tensor]], [None, pair_index])
+    neigh_index = torch.index(_56, _57)
+    _58 = torch.select(neigh_index, 0, 1)
+    _59 = torch.slice(prod0)
+    _60 = annotate(List[Optional[Tensor]], [None, _58])
+    tmp = torch.index(_59, _60)
+    _61 = [torch.select(neigh_index, 0, 0), torch.select(tmp, 0, 1)]
+    neigh_list = torch.vstack(_61)
+    shifts1 = torch.index_select(shifts0, 0, torch.select(tmp, 0, 0))
+    return (neigh_list, shifts1)
