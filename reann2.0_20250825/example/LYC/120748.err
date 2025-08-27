@@ -1,0 +1,2 @@
+cat: node21: No such file or directory
+slurmstepd: error: *** JOB 120748 ON node21 CANCELLED AT 2025-08-27T17:14:04 ***

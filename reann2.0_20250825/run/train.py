@@ -76,7 +76,7 @@ else:
 #=======================density======================================================
 #getdensity=GetDensity(rs,inta,neigh_atoms,initpot,nipsin,nwave=8,cutoff,norbit,emb_nblock=1,emb_nl=[1,8],emb_layernorm=True,oc_loop=3,oc_nblock=1,oc_nl=[64,64],oc_dropout_p=[0.0,0.0],oc_layernorm=True,nblock=1,nl=[64,64],dropout_p=[0.0,0.0],layernorm=True)
 
-print(neigh_atoms, initpot, nipsin, cutoff, norbit,nwave, emb_nblock, emb_nl, emb_layernorm,oc_loop, oc_nblock, oc_nl, oc_dropout_p,layernorm)
+#print(neigh_atoms, initpot, nipsin, cutoff, norbit,nwave, emb_nblock, emb_nl, emb_layernorm,oc_loop, oc_nblock, oc_nl, oc_dropout_p,layernorm)
 #initpot=dataloader_train.initpot
 #getdensity = GetDensity(neigh_atoms, initpot, nipsin, cutoff, norbit, 
 #                        nwave, emb_nblock, emb_nl, emb_layernorm, 
@@ -129,7 +129,7 @@ if table_init==1:
     prop_ceff[1]=f_ceff
 
 for name, params in getdensity.named_parameters():
-    print(name,params.shape,params)
+    print(name,params.shape)
 
 #for param in getdensity.parameters():
 #    param.requires_grad=False
