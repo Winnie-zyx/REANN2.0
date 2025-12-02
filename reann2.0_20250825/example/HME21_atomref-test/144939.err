@@ -1,0 +1,2 @@
+cat: node24: No such file or directory
+slurmstepd: error: *** JOB 144939 ON node24 CANCELLED AT 2025-11-19T21:38:09 ***

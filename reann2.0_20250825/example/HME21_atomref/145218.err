@@ -1,0 +1,66 @@
+cat: node24: No such file or directory
+Traceback (most recent call last):
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/public/home/zyx/reann/REANN2.0/reann2.0_20250825/__main__.py", line 1, in <module>
+    import run.train
+  File "/public/home/zyx/reann/REANN2.0/reann2.0_20250825/run/train.py", line 149, in <module>
+    data_train,data_test,force_train_size,force_test_size,Prop_class,loss_fn,optim,scheduler,ema,restart,PES_Normal,device,PES_Lammps)
+  File "/public/home/zyx/reann/REANN2.0/reann2.0_20250825/src/optimize.py", line 80, in Optimize
+    PES_Normal.jit_pes()
+  File "/public/home/zyx/reann/REANN2.0/reann2.0_20250825/pes/script_PES.py", line 16, in jit_pes
+    scripted_pes=torch.jit.script(init_pes)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/jit/_script.py", line 1266, in script
+    obj, torch.jit._recursive.infer_methods_to_compile
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/jit/_recursive.py", line 454, in create_script_module
+    return create_script_module_impl(nn_module, concrete_type, stubs_fn)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/jit/_recursive.py", line 520, in create_script_module_impl
+    create_methods_and_properties_from_stubs(concrete_type, method_stubs, property_stubs)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/jit/_recursive.py", line 371, in create_methods_and_properties_from_stubs
+    concrete_type._create_methods_and_properties(property_defs, property_rcbs, method_defs, method_rcbs, method_defaults)
+RuntimeError: 
+Module 'GetDensity' has no attribute 'initpot' :
+  File "/public/home/zyx/reann/REANN2.0/reann2.0_20250825/pes/PES.py", line 116
+        #print(output)
+        #print(self.gggg.initpot)
+        output = output+self.getdensity.initpot
+                        ~~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+        varene = torch.sum(output)
+        grad_cart = torch.autograd.grad([varene,],[cart,])[0]
+
+ERROR:torch.distributed.elastic.multiprocessing.api:failed (exitcode: 1) local_rank: 0 (pid: 64269) of binary: /public/software/anaconda3/envs/NequIP/bin/python
+Traceback (most recent call last):
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/distributed/run.py", line 728, in <module>
+    main()
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 345, in wrapper
+    return f(*args, **kwargs)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/distributed/run.py", line 724, in main
+    run(args)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/distributed/run.py", line 718, in run
+    )(*cmd_args)
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/distributed/launcher/api.py", line 131, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/public/software/anaconda3/envs/NequIP/lib/python3.7/site-packages/torch/distributed/launcher/api.py", line 247, in launch_agent
+    failures=result.failures,
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+/public/home/zyx/reann/REANN2.0/reann2.0_20250825/ FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2025-11-20_16:28:26
+  host      : gpu2
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 64269)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

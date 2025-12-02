@@ -1,0 +1,2 @@
+cat: node24: No such file or directory
+master_addr is only used for static rdzv_backend and when rdzv_endpoint is not specified.

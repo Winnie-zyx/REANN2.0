@@ -5,6 +5,7 @@ import numpy as np
 from src.read_data import *
 from src.get_info_of_rank import *
 from src.gpu_sel import *
+from src.atomref import *
 # used for DDP
 import torch.distributed as dist
 
@@ -162,9 +163,9 @@ numatoms=np.array(numatoms,dtype=np.int32)
 initpot=0.0
 if start_table<=1 or start_table==5:
     pot=np.array(pot,dtype=np.float32).reshape(-1)
-    initpot=np.sum(pot)/np.sum(numatoms)
+    #initpot=np.sum(pot)/np.sum(numatoms)
     pot=pot-initpot*numatoms
-
+    eref= read_eref_to_tensor(floder + "/Eref")
 # get the total number configuration for train/test
 ntotpoint=0
 for ipoint in numpoint:
@@ -212,6 +213,7 @@ range_train=[rank_begin,rank_end]
 com_coor_train,force_train,numatoms_train,species_train,atom_index_train,shifts_train=\
 get_info_of_rank(range_train,atom,atomtype,mass,numatoms,scalmatrix,period_table,coor,force,\
 start_table,table_coor,neigh_atoms,batchsize_train,cutoff,device,np_dtype)
+species_train_onehot = to_one_hot(species_train)
 
 # get the shifts and atom_index of each neighbor for test
 rank_begin=int(np.ceil(numpoint[1]/world_size))*rank
@@ -220,14 +222,17 @@ range_test=[numpoint[0]+rank_begin,numpoint[0]+rank_end]
 com_coor_test,force_test,numatoms_test,species_test,atom_index_test,shifts_test=\
 get_info_of_rank(range_test,atom,atomtype,mass,numatoms,scalmatrix,period_table,coor,force,\
 start_table,table_coor,neigh_atoms,batchsize_test,cutoff,device,np_dtype)
+species_test_onehot = to_one_hot(species_test)
 #force_train_size=force_train.size(1)
 #force_test_size=force_test.size(1)
 
 # nprop is the number of properties used for training in the same NN  if start_table==1: nprop=2 else nprop=1
 nprop=1
 if start_table==1: 
-    pot_train=torch.from_numpy(np.array(pot[range_train[0]:range_train[1]],dtype=np_dtype))
-    pot_test=torch.from_numpy(np.array(pot[range_test[0]:range_test[1]],dtype=np_dtype))
+    pot_train_origin=torch.from_numpy(np.array(pot[range_train[0]:range_train[1]],dtype=np_dtype))
+    pot_train = pot_train_origin - (species_train_onehot * eref.squeeze(1).view(1, 1, 119)).sum(dim=(1,2))
+    pot_test_origin=torch.from_numpy(np.array(pot[range_test[0]:range_test[1]],dtype=np_dtype))
+    pot_test = pot_test_origin - (species_test_onehot * eref.squeeze(1).view(1, 1, 119)).sum(dim=(1,2))
     abpropset_train=(pot_train,force_train)
     abpropset_test=(pot_test,force_test)
     nprop=2
@@ -245,8 +250,10 @@ if start_table==1:
     volume_test=volume[range_test[0]:range_test[1]]
 
 if start_table==5: # static stress tensor
-    pot_train=torch.from_numpy(pot[range_train[0]:range_train[1]]).to(torch_dtype)
-    pot_test=torch.from_numpy(pot[range_test[0]:range_test[1]]).to(torch_dtype)
+    pot_train_origin=torch.from_numpy(pot[range_train[0]:range_train[1]]).to(torch_dtype)
+    pot_train = pot_train_origin - (species_train_onehot * eref.squeeze(1).view(1, 1, 119)).sum(dim=(1,2))
+    pot_test_origin=torch.from_numpy(pot[range_test[0]:range_test[1]]).to(torch_dtype)
+    pot_test = pot_test_origin - (species_test_onehot * eref.squeeze(1).view(1, 1, 119)).sum(dim=(1,2)) 
     stress_train=stress[range_train[0]:range_train[1]]
     stress_test =stress[range_test[0]:range_test[1]]
     scalmatrix_t=torch.from_numpy(np.array(scalmatrix,dtype=np_dtype))
@@ -269,8 +276,10 @@ if start_table==5: # static stress tensor
     force_test_size=force_test.size(1)
    
 if start_table==0: 
-    pot_train=torch.from_numpy(np.array(pot[range_train[0]:range_train[1]],dtype=np_dtype))
-    pot_test=torch.from_numpy(np.array(pot[range_test[0]:range_test[1]],dtype=np_dtype))
+    pot_train_origin=torch.from_numpy(np.array(pot[range_train[0]:range_train[1]],dtype=np_dtype))
+    pot_train = pot_train_origin - (species_train_onehot * eref.squeeze(1).view(1, 1, 119)).sum(dim=(1,2))
+    pot_test_origin=torch.from_numpy(np.array(pot[range_test[0]:range_test[1]],dtype=np_dtype))
+    pot_test = pot_test_origin - (species_test_onehot * eref.squeeze(1).view(1, 1, 119)).sum(dim=(1,2))
     abpropset_train=(pot_train,)
     abpropset_test=(pot_test,)
     test_nele=torch.empty(nprop)

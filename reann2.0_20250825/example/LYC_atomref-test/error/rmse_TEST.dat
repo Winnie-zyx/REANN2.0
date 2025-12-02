@@ -1,0 +1,72 @@
+rmse
+energy          0.66496678
+force           0.49734023
+stress          0.00755961
+mae
+energy          5.15073442
+force           0.36940452
+stress          0.00508300
+rmse
+energy          0.42183488
+force           0.31440753
+stress          0.01483824
+mae
+energy          3.26746631
+force           0.22828801
+stress          0.00974677
+rmse
+energy          0.64842741
+force           0.48514189
+stress          0.00608128
+mae
+energy          5.02262497
+force           0.35876313
+stress          0.00405358
+rmse
+energy          0.53627788
+force           0.47038035
+stress          0.00817134
+mae
+energy          4.15390587
+force           0.34652045
+stress          0.00551032
+rmse
+energy         24.02424142
+force           0.49968169
+stress          0.00772282
+mae
+energy        186.09095764
+force           0.37147433
+stress          0.00518584
+rmse
+energy          0.10014603
+force           0.44922540
+stress          0.00839047
+mae
+energy          0.77525562
+force           0.33692691
+stress          0.00552499
+rmse
+energy          0.00214835
+force           0.06264034
+stress          0.01107695
+mae
+energy          0.01644682
+force           0.04644543
+stress          0.00749074
+rmse
+energy          0.00087480
+force           0.02870071
+stress          0.01107711
+mae
+energy          0.00672385
+force           0.02108930
+stress          0.00748303
+rmse
+energy          0.00005812
+force           0.01194706
+stress          0.00680629
+mae
+energy          0.00034189
+force           0.00889253
+stress          0.00477465

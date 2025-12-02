@@ -9,7 +9,7 @@ from src.activate import Relu_like,Tanh_like
 #import MODEL as MODEL
 
 class GetDensity(torch.nn.Module):
-    def __init__(self,neigh_atoms, nipsin=2, cutoff=4.0, norbit=64, nwave=8, emb_nblock=1, emb_nl=[1,8], emb_layernorm=True,oc_loop=3, oc_nblock=1, oc_nl=[64,64], oc_dropout_p=[0.0,0.0],oc_layernorm=True, nblock=1, nl=[64,64], dropout_p=[0.0,0.0],layernorm=True,initpot=0.0,Dtype=torch.float32):   ##add atom_species, delete rs and inta, atom_species from inputand transport to torch,tensor([[8.],[1.]])
+    def __init__(self,neigh_atoms, nipsin=2, cutoff=4.0, norbit=64, nwave=8, emb_nblock=1, emb_nl=[1,8], emb_layernorm=True,oc_loop=3, oc_nblock=1, oc_nl=[64,64], oc_dropout_p=[0.0,0.0],oc_layernorm=True, nblock=1, nl=[64,64], dropout_p=[0.0,0.0],layernorm=True,eref=[[0.0] for _ in range(119)],Dtype=torch.float32):   ##add atom_species, delete rs and inta, atom_species from inputand transport to torch,tensor([[8.],[1.]])
         super(GetDensity,self).__init__()
         '''
         rs: tensor[nwave] float
@@ -23,7 +23,8 @@ class GetDensity(torch.nn.Module):
         self.norbit=norbit 
         self.register_buffer('cutoff', torch.Tensor([cutoff]))          #注册缓冲区
         self.register_buffer('nipsin', torch.tensor([nipsin]))
-        self.register_buffer('initpot',torch.Tensor([initpot]))
+        #self.register_buffer('initpot',torch.Tensor([initpot]))
+        self.register_buffer('eref',torch.Tensor(eref))
  
         self.contracted_coeff=nn.parameter.Parameter(torch.nn.init.xavier_uniform_(torch.randn(oc_loop+1,nipsin,nwave,norbit)))     #len(ocmod_list),nipsin+1,nwave,ncontract
 
@@ -135,10 +136,12 @@ class GetDensity(torch.nn.Module):
         #print(species_1)
         species_1=species.add(1)
 
-        print('species_1\n',species_1)
+        #print('species_1\n',species_1)
 
         num_classes = 118
         one_hot_encodings = torch.nn.functional.one_hot(species_1, num_classes)
+        #print('one_hot_encodings',one_hot_encodings)
+        #print('one_hot_encodings_1',one_hot_encodings[1])
         one_hot_encodings = one_hot_encodings.float()
         center_coeff=self.emb_centernn(one_hot_encodings)
         expand_spec=torch.index_select(one_hot_encodings,0,neigh_list.view(-1)).view(2,-1,118)

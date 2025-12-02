@@ -83,7 +83,7 @@ else:
 #                        oc_loop, oc_nblock, oc_nl, oc_dropout_p, 
 #                        oc_layernorm, nblock, nl, dropout_p, 
 #                        layernorm,Dtype=torch_dtype).to(device).to(torch_dtype)
-getdensity=GetDensity(neigh_atoms, nipsin=nipsin, cutoff=cutoff, norbit=norbit,nwave=nwave, emb_nblock=emb_nblock, emb_nl=emb_nl, emb_layernorm=emb_layernorm,oc_loop=oc_loop, oc_nblock=oc_nblock, oc_nl=oc_nl, oc_dropout_p=oc_dropout_p,oc_layernorm=oc_layernorm, nblock=nblock, nl=nl, dropout_p=dropout_p,layernorm=layernorm,initpot=initpot)
+getdensity=GetDensity(neigh_atoms, nipsin=nipsin, cutoff=cutoff, norbit=norbit,nwave=nwave, emb_nblock=emb_nblock, emb_nl=emb_nl, emb_layernorm=emb_layernorm,oc_loop=oc_loop, oc_nblock=oc_nblock, oc_nl=oc_nl, oc_dropout_p=oc_dropout_p,oc_layernorm=oc_layernorm, nblock=nblock, nl=nl, dropout_p=dropout_p,layernorm=layernorm,eref=eref)
 #self.initpot=getdensity.initpot
 #print(initpot)
 
@@ -145,7 +145,7 @@ if dist.get_rank()==0:
     #for name, m in Prop_class.named_parameters():
     #    print(name)
 #==========================================================
-Optimize(initpot,fout,prop_ceff,nprop,train_nele,test_nele,init_f,final_f,decay_factor,start_lr,end_lr,print_epoch,Epoch,\
+Optimize(eref,fout,prop_ceff,nprop,train_nele,test_nele,init_f,final_f,decay_factor,start_lr,end_lr,print_epoch,Epoch,\
 data_train,data_test,force_train_size,force_test_size,Prop_class,loss_fn,optim,scheduler,ema,restart,PES_Normal,device,PES_Lammps)
 if dist.get_rank()==0:
     fout.write(time.strftime("%Y-%m-%d-%H_%M_%S \n", time.localtime()))

@@ -4,7 +4,7 @@ import numpy as np
 import torch.distributed as dist
 
 
-def Optimize(initpot,fout,prop_ceff,nprop,train_nele,test_nele,init_f,final_f,decay_factor,start_lr,end_lr,print_epoch,Epoch,\
+def Optimize(eref,fout,prop_ceff,nprop,train_nele,test_nele,init_f,final_f,decay_factor,start_lr,end_lr,print_epoch,Epoch,\
 data_train,data_test,force_train_size,force_test_size,Prop_class,loss_fn,optim,scheduler,ema,restart,PES_Normal,device,PES_Lammps=None): 
 
     rank=dist.get_rank()
@@ -78,8 +78,8 @@ data_train,data_test,force_train_size,force_test_size,Prop_class,loss_fn,optim,s
                  torch.save(state, "./REANN.pth")
                  #PES_Normal.jit_pes(initpot=initpot)
                  PES_Normal.jit_pes()
-                 if PES_Lammps:
-                     PES_Lammps.jit_pes()
+                 #if PES_Lammps:
+                 #    PES_Lammps.jit_pes()
           
           # restore the model for continue training
           ema.restore()

@@ -5,6 +5,7 @@ from inference.density import *
 from inference.get_neigh import *
 from src.dataloader import *
 from src.density import GetDensity as ggg
+from stress.onehot_jit import to_one_hot
 #from src.MODEL import *
 
 class PES(torch.nn.Module):
@@ -106,6 +107,8 @@ class PES(torch.nn.Module):
     
     def forward(self,period_table,cart,cell,species,mass):
         cart=cart.detach().clone()
+        species=species.detach().clone()
+        species_onehot = to_one_hot(species,119)
         neigh_list, shifts=self.neigh_list(period_table,cart,cell,mass)
         cart.requires_grad_(True)
         #print(self.getdensity.initpot)
@@ -113,8 +116,9 @@ class PES(torch.nn.Module):
         dist_vec,output=self.getdensity(cart,neigh_list,shifts,species)
         #print(output)
         #print(self.gggg.initpot)
-        output = output+self.getdensity.initpot
-        varene = torch.sum(output)
+        #output = output+self.getdensity.initpot
+        #varene = torch.sum(output)
+        varene = torch.sum(output)+torch.matmul(species_onehot,self.getdensity.eref).sum()
         grad_cart = torch.autograd.grad([varene,],[cart,])[0]
         if grad_cart is not None:
             return varene.detach(),-grad_cart.detach()
